@@ -2,13 +2,15 @@ from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
+from html import escape
 
 # Load environment variables from .env file if it exists
 load_dotenv()
 
-# Configure the API key
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "AIzaSyD6bTQ1NbxvKaIfybTWxcjS8epl1tYQufc")
-genai.configure(api_key=GOOGLE_API_KEY)
+# Configure the API key from the environment only
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
 
 app = Flask(__name__)
 
@@ -32,7 +34,7 @@ def format_bot_response(response, language):
                 # End of code block
                 formatted_text += "\n<div class='code-block'>\n"
                 code_text = "\n".join(code_block)
-                formatted_text += code_text + "\n"
+                formatted_text += escape(code_text) + "\n"
                 formatted_text += "</div>\n\n"
                 code_block = []
                 in_code_block = False
@@ -48,25 +50,25 @@ def format_bot_response(response, language):
             # Regular text - check for special formatting
             if line.strip().startswith('#') or line.strip().startswith('##'):
                 # Heading
-                formatted_text += f"<h3>{line}</h3>\n"
+                formatted_text += f"<h3>{escape(line)}</h3>\n"
             elif line.strip().startswith('- ') or line.strip().startswith('* '):
                 # List item
-                formatted_text += f"<li>{line[2:]}</li>\n"
+                formatted_text += f"<li>{escape(line[2:])}</li>\n"
             elif "ERROR" in line.upper() or "ISSUE" in line.upper():
                 # Error or issue description
-                formatted_text += f"<div class='error'>{line}</div>\n"
+                formatted_text += f"<div class='error'>{escape(line)}</div>\n"
             elif "FIXED" in line.upper() or "SOLUTION" in line.upper():
                 # Solution or fix
-                formatted_text += f"<div class='success'>{line}</div>\n"
+                formatted_text += f"<div class='success'>{escape(line)}</div>\n"
             else:
                 # Regular explanation text
-                formatted_text += f"{line}\n"
+                formatted_text += f"{escape(line)}\n"
     
     # Handle any remaining code block
     if code_block:
         formatted_text += "\n<div class='code-block'>\n"
         code_text = "\n".join(code_block)
-        formatted_text += code_text + "\n"
+        formatted_text += escape(code_text) + "\n"
         formatted_text += "</div>\n\n"
     
     return formatted_text
@@ -74,6 +76,9 @@ def format_bot_response(response, language):
 def get_debugging_response(user_input, language, mode="Standard Debugging"):
     """Send the user's input code & language to Gemini AI for debugging."""
     try:
+        if not GOOGLE_API_KEY:
+            return None, "The GOOGLE_API_KEY environment variable is not configured."
+
         model = genai.GenerativeModel("gemini-1.5-pro-latest") 
         
         # Different prompts based on mode
@@ -128,9 +133,9 @@ Please provide:
         response = model.generate_content(prompt)
         raw_text = response.text if response.text else "No response from AI."
         formatted_text = format_bot_response(raw_text, language)
-        return formatted_text
+        return formatted_text, None
     except Exception as e:
-        return f"Error: {str(e)}"
+        return None, str(e)
 
 @app.route('/')
 def index():
@@ -138,15 +143,28 @@ def index():
 
 @app.route('/api/debug', methods=['POST'])
 def debug_code():
-    data = request.json
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'A JSON request body is required'}), 400
+
     code = data.get('code', '')
     language = data.get('language', 'Python')
     mode = data.get('mode', 'Standard Debugging')
     
-    if not code.strip():
-        return jsonify({'error': 'No code provided'})
+    if not isinstance(code, str) or not code.strip():
+        return jsonify({'error': 'No code provided'}), 400
+    if len(code) > 50_000:
+        return jsonify({'error': 'Code exceeds the 50,000 character limit'}), 413
+    if language not in LANGUAGES:
+        return jsonify({'error': 'Unsupported language'}), 400
+    if mode not in DEBUG_MODES:
+        return jsonify({'error': 'Unsupported debugging mode'}), 400
     
-    response = get_debugging_response(code, language, mode)
+    response, error = get_debugging_response(code, language, mode)
+    if error:
+        if not GOOGLE_API_KEY:
+            return jsonify({'error': error}), 503
+        return jsonify({'error': 'The AI service could not process this request'}), 502
     return jsonify({'response': response})
 
 # Health check endpoint for Vercel

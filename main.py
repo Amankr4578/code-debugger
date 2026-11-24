@@ -2,9 +2,13 @@ import google.generativeai as genai
 import tkinter as tk
 from tkinter import scrolledtext, ttk
 import tkinter.font as tkfont
+import os
+from dotenv import load_dotenv
 
-GOOGLE_API_KEY = "AIzaSyD6bTQ1NbxvKaIfybTWxcjS8epl1tYQufc"
-genai.configure(api_key=GOOGLE_API_KEY)
+load_dotenv()
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
 
 # Add more programming languages with icons
 LANGUAGES = ["Python", "Java", "C++", "JavaScript", "C#", "Go", "Rust", "PHP", "Swift", "TypeScript", "Kotlin", "Ruby"]

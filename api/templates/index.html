@@ -690,6 +690,10 @@ Ready to make your code better!</div>
                         loadingMessage.remove();
                     }
 
+                    if (!response.ok) {
+                        throw new Error(data.error || "Request failed");
+                    }
+
                     // Add bot response
                     chatHistory.innerHTML += `
                         <div class="bot-heading">🤖 Bot:</div>
@@ -713,7 +717,7 @@ Ready to make your code better!</div>
 
                     chatHistory.innerHTML += `
                         <div class="bot-heading">🤖 Bot:</div>
-                        <div class="error-text">Error: Failed to process your request. Please try again.</div>
+                        <div class="error-text">Error: ${escapeHtml(error.message || "Failed to process your request. Please try again.")}</div>
                         <div class="separator">════════════════════════════════════════════════════════════════════════════════</div>
                     `;
                     
@@ -734,6 +738,12 @@ Ready to make your code better!</div>
                 // The response is already pre-formatted with HTML tags from the server
                 // We can add additional processing here if needed
                 return htmlResponse;
+            }
+
+            function escapeHtml(value) {
+                const element = document.createElement('div');
+                element.textContent = value;
+                return element.innerHTML;
             }
 
             // Clear button functionality
