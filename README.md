@@ -8,7 +8,7 @@
 
 ## 🚀 Features
 
-- 🌟 **Powered by Google Gemini 1.5 Pro** (Generative AI)
+- 🌟 **Powered by Google Gemini 4 Hydrogen** (Generative AI)
 - 🎨 **Elegant Tkinter GUI** with custom styling and animations
 - 🌐 **Multi-language support**:
   - Python, Java, C++, JavaScript, C#, Go, Rust, PHP, Swift, TypeScript, Kotlin, Ruby
@@ -28,7 +28,7 @@
 
 - Python 3.8+
 - Tkinter (GUI)
-- Google Generative AI (Gemini 1.5 Pro)
+- Google Gen AI SDK (Gemini 4 Hydrogen)
 
 ---
 
